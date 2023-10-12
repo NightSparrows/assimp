@@ -112,11 +112,7 @@ bool glTF2Importer::CanRead(const std::string &filename, IOSystem *pIOHandler, b
 
     if (pIOHandler) {
         glTF2::Asset asset(pIOHandler);
-        return asset.CanRead(
-            filename,
-            CheckMagicToken(
-                pIOHandler, filename, AI_GLB_MAGIC_NUMBER, 1, 0,
-                static_cast<unsigned int>(strlen(AI_GLB_MAGIC_NUMBER))));
+        return asset.CanRead(filename, extension == "glb");
     }
 
     return false;
@@ -234,8 +230,7 @@ inline void SetMaterialTextureProperty(std::vector<int> &embeddedTexIdxs, Asset 
     SetMaterialTextureProperty(embeddedTexIdxs, r, (glTF2::TextureInfo)prop, mat, texType, texSlot);
 
     if (prop.texture && prop.texture->source) {
-        std::string textureStrengthKey = std::string(_AI_MATKEY_TEXTURE_BASE) + "." + "strength";
-        mat->AddProperty(&prop.strength, 1, textureStrengthKey.c_str(), texType, texSlot);
+        mat->AddProperty(&prop.strength, 1, AI_MATKEY_GLTF_TEXTURE_STRENGTH(texType, texSlot));
     }
 }
 
@@ -1683,10 +1678,7 @@ void glTF2Importer::InternReadFile(const std::string &pFile, aiScene *pScene, IO
 
     // read the asset file
     glTF2::Asset asset(pIOHandler, static_cast<rapidjson::IRemoteSchemaDocumentProvider *>(mSchemaDocumentProvider));
-    asset.Load(pFile,
-               CheckMagicToken(
-                   pIOHandler, pFile, AI_GLB_MAGIC_NUMBER, 1, 0,
-                   static_cast<unsigned int>(strlen(AI_GLB_MAGIC_NUMBER))));
+    asset.Load(pFile, GetExtension(pFile) == "glb");
     if (asset.scene) {
         pScene->mName = asset.scene->name;
     }

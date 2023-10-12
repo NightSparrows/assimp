@@ -731,7 +731,7 @@ void DXFImporter::ParsePolyLineVertex(DXF::LineReader& reader, DXF::PolyLine& li
                 if (index >= 0) {
                     indices[cnti++] = static_cast<unsigned int>(index);
                 } else {
-                    indices[cnti++] = static_cast<unsigned int>(-index);
+                    ASSIMP_LOG_WARN("DXF: Skip invisible face.");
                 }
             }
             break;

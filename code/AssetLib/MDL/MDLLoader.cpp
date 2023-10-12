@@ -273,14 +273,8 @@ void MDLImporter::InternReadFile(const std::string &pFile,
 
 // ------------------------------------------------------------------------------------------------
 // Check whether we're still inside the valid file range
-bool MDLImporter::IsPosValid(const void *szPos) const {
-    return szPos && (const unsigned char *)szPos <= this->mBuffer + this->iFileSize && szPos >= this->mBuffer;
-}
-
-// ------------------------------------------------------------------------------------------------
-// Check whether we're still inside the valid file range
 void MDLImporter::SizeCheck(const void *szPos) {
-    if (!IsPosValid(szPos)) {
+    if (!szPos || (const unsigned char *)szPos > this->mBuffer + this->iFileSize || szPos < this->mBuffer) {
         throw DeadlyImportError("Invalid MDL file. The file is too small "
                                 "or contains invalid data.");
     }
@@ -290,7 +284,7 @@ void MDLImporter::SizeCheck(const void *szPos) {
 // Just for debugging purposes
 void MDLImporter::SizeCheck(const void *szPos, const char *szFile, unsigned int iLine) {
     ai_assert(nullptr != szFile);
-    if (!IsPosValid(szPos)) {
+    if (!szPos || (const unsigned char *)szPos > mBuffer + iFileSize) {
         // remove a directory if there is one
         const char *szFilePtr = ::strrchr(szFile, '\\');
         if (!szFilePtr) {

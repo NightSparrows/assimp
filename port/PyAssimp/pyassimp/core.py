@@ -311,7 +311,6 @@ def load(filename,
     Scene object with model data
     '''
 
-    from ctypes import c_char_p
     if hasattr(filename, 'read'):
         # This is the case where a file object has been passed to load.
         # It is calling the following function:
@@ -325,7 +324,7 @@ def load(filename,
         model = _assimp_lib.load_mem(data,
                                      len(data),
                                      processing,
-                                     c_char_p(file_type.encode(sys.getfilesystemencoding())))
+                                     file_type)
     else:
         # a filename string has been passed
         model = _assimp_lib.load(filename.encode(sys.getfilesystemencoding()), processing)
@@ -390,19 +389,6 @@ def export_blob(scene,
     if exportBlobPtr == 0:
         raise AssimpError('Could not export scene to blob!')
     return exportBlobPtr
-
-def available_formats():
-    """
-    Return a list of file format extensions supported to import.
-
-    Returns
-    ---------
-    A list of upper-case file extensions, e.g. [3DS, OBJ]
-    """
-    from ctypes import byref
-    extension_list = structs.String()
-    _assimp_lib.dll.aiGetExtensionList(byref(extension_list))
-    return [e[2:].upper() for e in str(extension_list.data, sys.getfilesystemencoding()).split(";")]
 
 def _finalize_texture(tex, target):
     setattr(target, "achformathint", tex.achFormatHint)
