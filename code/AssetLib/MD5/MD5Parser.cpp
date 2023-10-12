@@ -3,7 +3,7 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2022, assimp team
+Copyright (c) 2006-2023, assimp team
 
 All rights reserved.
 
@@ -87,7 +87,7 @@ MD5Parser::MD5Parser(char *_buffer, unsigned int _fileSize) : buffer(_buffer), b
 
 // ------------------------------------------------------------------------------------------------
 // Report error to the log stream
-/*static*/ AI_WONT_RETURN void MD5Parser::ReportError(const char *error, unsigned int line) {
+AI_WONT_RETURN void MD5Parser::ReportError(const char *error, unsigned int line) {
     char szBuffer[1024];
     ::ai_snprintf(szBuffer, 1024, "[MD5] Line %u: %s", line, error);
     throw DeadlyImportError(szBuffer);
@@ -95,7 +95,7 @@ MD5Parser::MD5Parser(char *_buffer, unsigned int _fileSize) : buffer(_buffer), b
 
 // ------------------------------------------------------------------------------------------------
 // Report warning to the log stream
-/*static*/ void MD5Parser::ReportWarning(const char *warn, unsigned int line) {
+void MD5Parser::ReportWarning(const char *warn, unsigned int line) {
     char szBuffer[1024];
     ::snprintf(szBuffer, sizeof(szBuffer), "[MD5] Line %u: %s", line, warn);
     ASSIMP_LOG_WARN(szBuffer);
@@ -122,8 +122,8 @@ void MD5Parser::ParseHeader() {
     // print the command line options to the console
     // FIX: can break the log length limit, so we need to be careful
     char *sz = buffer;
-    while (!IsLineEnd(*buffer++))
-        ;
+    while (!IsLineEnd(*buffer++));
+    
     ASSIMP_LOG_INFO(std::string(sz, std::min((uintptr_t)MAX_LOG_MESSAGE_LENGTH, (uintptr_t)(buffer - sz))));
     SkipSpacesAndLineEnd();
 }
@@ -138,18 +138,31 @@ bool MD5Parser::ParseSection(Section &out) {
     char *sz = buffer;
     while (!IsSpaceOrNewLine(*buffer)) {
         ++buffer;
+        if (buffer == bufferEnd)
+            return false;
     }
     out.mName = std::string(sz, (uintptr_t)(buffer - sz));
-    SkipSpaces();
+    while (IsSpace(*buffer)) {
+        ++buffer;
+        if (buffer == bufferEnd)
+            return false;
+    }
 
     bool running = true;
     while (running) {
         if ('{' == *buffer) {
             // it is a normal section so read all lines
             ++buffer;
+            if (buffer == bufferEnd)
+                return false;
             bool run = true;
             while (run) {
-                if (!SkipSpacesAndLineEnd()) {
+                while (IsSpaceOrNewLine(*buffer)) {
+                    ++buffer;
+                    if (buffer == bufferEnd)
+                        return false;
+                }
+                if ('\0' == *buffer) {
                     return false; // seems this was the last section
                 }
                 if ('}' == *buffer) {
@@ -164,25 +177,39 @@ bool MD5Parser::ParseSection(Section &out) {
                 elem.szStart = buffer;
 
                 // terminate the line with zero
-                while (!IsLineEnd(*buffer))
+                while (!IsLineEnd(*buffer)) {
                     ++buffer;
+                    if (buffer == bufferEnd)
+                        return false;
+                }
                 if (*buffer) {
                     ++lineNumber;
                     *buffer++ = '\0';
+                    if (buffer == bufferEnd)
+                        return false;
                 }
             }
             break;
         } else if (!IsSpaceOrNewLine(*buffer)) {
             // it is an element at global scope. Parse its value and go on
             sz = buffer;
-            while (!IsSpaceOrNewLine(*buffer++))
-                ;
+            while (!IsSpaceOrNewLine(*buffer++)) {
+                if (buffer == bufferEnd)
+                    return false;
+            }
             out.mGlobalValue = std::string(sz, (uintptr_t)(buffer - sz));
             continue;
         }
         break;
     }
-    return SkipSpacesAndLineEnd();
+    if (buffer == bufferEnd)
+        return false;
+    while (IsSpaceOrNewLine(*buffer)) {
+        ++buffer;
+        if (buffer == bufferEnd)
+            return false;
+    }
+    return '\0' != *buffer;
 }
 
 // ------------------------------------------------------------------------------------------------
