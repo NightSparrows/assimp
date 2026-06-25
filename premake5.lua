@@ -2,12 +2,49 @@ project "assimp"
   kind "StaticLib"
   language "C++"
   cppdialect "C++17"
+  -- 1. 讓 Premake 在建立專案檔時，自動把 #cmakedefine 替換成普通的 #define 或註解
+    -- 這樣編譯器就不會再噴「無效的預先處理指令」錯誤了
+    local config_in = "include/assimp/config.h.in"
+    local config_out = "include/assimp/config.h"
+    
+    if os.isfile(config_in) then
+        local content = io.readfile(config_in)
+        -- 把所有的 #cmakedefine 替換成原本 C++ 懂的 //#define，讓它們預設關閉
+        content = string.gsub(content, "#cmakedefine", "//#cmakedefine")
+        io.writefile(config_out, content)
+    end
 
-  targetdir ("bin/" .. outputdir .. "/%{prj.name}")
-  objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
+-- =================================================================
+    -- 自動處理 revision.h.in -> revision.h
+    -- =================================================================
+    local rev_in = "include/assimp/revision.h.in"
+    local rev_out = "include/assimp/revision.h" -- 丟到 include/assimp 底下讓編譯器讀得到
+    if os.isfile(rev_in) then
+        local content = io.readfile(rev_in)
+
+        -- 管它什麼版本，全部填 0 或預設字串就對了
+        content = string.gsub(content, "@GIT_COMMIT_HASH@", "0")
+        content = string.gsub(content, "@GIT_BRANCH@", "master")
+        content = string.gsub(content, "@ASSIMP_VERSION_MAJOR@", "5")
+        content = string.gsub(content, "@ASSIMP_VERSION_MINOR@", "0")
+        content = string.gsub(content, "@ASSIMP_VERSION_PATCH@", "0")
+        content = string.gsub(content, "@ASSIMP_PACKAGE_VERSION@", "0")
+        
+        -- 處理 CMAKE 相關命名變數
+        content = string.gsub(content, "@CMAKE_SHARED_LIBRARY_PREFIX@", "lib")
+        content = string.gsub(content, "@LIBRARY_SUFFIX@", "")
+        content = string.gsub(content, "@CMAKE_DEBUG_POSTFIX@", "d")
+
+        io.writefile(rev_out, content)
+    end
+
+  targetdir ("%{wks.location}/bin/" .. outputdir .. "/%{prj.name}")
+  objdir ("%{wks.location}/bin-int/" .. outputdir .. "/%{prj.name}")
 
   defines {
       -- "SWIG",
+
+      "ASSIMP_BUILD_NO_USD_IMPORTER",
 
       "ASSIMP_BUILD_NO_X_IMPORTER",
       "ASSIMP_BUILD_NO_3DS_IMPORTER",
@@ -100,6 +137,8 @@ project "assimp"
       "include/**",
 	  "code/Common/**.cpp",
 
+    "contrib/pugixml/src/**.cpp",
+
 	  -- unzip
 	  "contrib/unzip/**.c",
 
@@ -146,14 +185,16 @@ project "assimp"
   }
 
   includedirs {
+    ".",
       "include",
 	  "code",
       "contrib/irrXML",
-      "contrib/zlib",
+      -- "contrib/zlib",
       "contrib/rapidjson/include",
 	  "contrib/pugixml/src",
 	  "contrib",
-	  "contrib/unzip"
+	  "contrib/unzip",
+    "contrib/utf8cpp/source"
   }
 
 	multiprocessorcompile "On"
@@ -167,6 +208,7 @@ project "assimp"
     filter "system:linux"
       pic "On"
       defines {
+        "Z_HAVE_STDARG_H",
         "ASSIMP_BUILD_NO_OWN_ZLIB",
       }
       links {
